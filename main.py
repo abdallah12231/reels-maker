@@ -23,7 +23,7 @@ client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 @app.route("/")
 def home():
     try:
-        # هيفتح ملف index.html اللي أنت رفعته في فولدر templates
+        # يفتح ملف index.html الموجود في فولدر templates
         return render_template("index.html")
     except Exception as e:
         return f"Error: index.html not found in templates folder. {str(e)}"
@@ -34,6 +34,9 @@ def download_video(url: str, job_id: str) -> str:
     cmd = [
         "yt-dlp",
         "--no-check-certificates",
+        "--no-warnings",
+        # التعديل السحري لتخطي حماية يوتيوب
+        "--extractor-args", "youtube:player_client=android",
         "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
         "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
         "--merge-output-format", "mp4",
@@ -41,7 +44,17 @@ def download_video(url: str, job_id: str) -> str:
         url
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
+    
+    # محاولة طوارئ في حال فشل التحميل الأول
+    if not os.path.exists(output_path):
+        cmd_emergency = [
+            "yt-dlp", "-f", "b", 
+            "--extractor-args", "youtube:player_client=ios", 
+            "-o", output_path, url
+        ]
+        subprocess.run(cmd_emergency, capture_output=True)
+
+    if not os.path.exists(output_path):
         raise Exception(f"Download failed: {result.stderr}")
     return output_path
 
@@ -85,14 +98,14 @@ def analyze_video_with_ai(url: str, duration: float) -> list:
       "start": 0,
       "end": 60,
       "title": "عنوان الريلز",
-      "description": "وصف جذاب للريلز مناسب لليوتيوب شورتس",
-      "hashtags": "#هاشتاج1 #هاشتاج2"
+      "description": "وصف جذاب",
+      "hashtags": "#هاشتاج"
     }}
   ]
 }}
 """
     message = client.messages.create(
-        model="claude-3-sonnet-20240229", # تم تحديث اسم الموديل ليكون صحيحاً
+        model="claude-3-sonnet-20240229",
         max_tokens=2000,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -103,10 +116,6 @@ def analyze_video_with_ai(url: str, duration: float) -> list:
     return data["reels"]
 
 # --- الروابط (EndPoints) ---
-@app.route("/health", methods=["GET"])
-def health():
-    return jsonify({"status": "ok"})
-
 @app.route("/process", methods=["POST"])
 def process_video():
     data = request.json
@@ -124,8 +133,8 @@ def process_video():
         for i, reel in enumerate(reels):
             output_filename = f"{job_id}_reel_{i+1}.mp4"
             output_path = os.path.join(OUTPUT_DIR, output_filename)
-            start = min(reel["start"], duration - 10)
-            end = min(reel["end"], duration)
+            start = min(float(reel["start"]), duration - 10)
+            end = min(float(reel["end"]), duration)
             cut_video(video_path, start, end, output_path)
 
             results.append({
