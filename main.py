@@ -33,6 +33,8 @@ def download_video(url: str, job_id: str) -> str:
     output_path = os.path.join(DOWNLOAD_DIR, f"{job_id}.mp4")
     cmd = [
         "yt-dlp",
+        "--no-check-certificates",
+        "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
         "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
         "--merge-output-format", "mp4",
         "-o", output_path,
