@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reels Maker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: #0f0f0f;
+      color: #fff;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container { max-width: 700px; margin: 0 auto; }
+    h1 {
+      text-align: center;
+      font-size: 2rem;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #ff0050, #ff6b35);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+      text-align: center;
+      color: #aaa;
+      margin-bottom: 30px;
+      font-size: 0.95rem;
+    }
+    .card {
+      background: #1a1a1a;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 20px;
+      border: 1px solid #333;
+    }
+    label { display: block; margin-bottom: 8px; color: #ccc; font-size: 0.9rem; }
+    input[type="text"], input[type="url"] {
+      width: 100%;
+      padding: 14px 16px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus { border-color: #ff0050; }
+    .btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #ff0050, #ff6b35);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 16px;
+      transition: opacity 0.2s;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn:hover:not(:disabled) { opacity: 0.9; }
+    .status {
+      text-align: center;
+      padding: 16px;
+      border-radius: 10px;
+      margin-top: 16px;
+      display: none;
+    }
+    .status.loading { background: #1e3a5f; color: #7dd3fc; display: block; }
+    .status.error { background: #3f1212; color: #fca5a5; display: block; }
+    .reel-card {
+      background: #222;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+      border: 1px solid #333;
+    }
+    .reel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .reel-number {
+      background: linear-gradient(135deg, #ff0050, #ff6b35);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: bold;
+    }
+    .reel-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; }
+    .reel-description { color: #bbb; font-size: 0.9rem; line-height: 1.6; margin-bottom: 10px; }
+    .reel-hashtags { color: #ff6b35; font-size: 0.85rem; margin-bottom: 14px; }
+    .reel-time { color: #666; font-size: 0.8rem; margin-bottom: 14px; }
+    .download-btn {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #ff0050;
+      border-radius: 8px;
+      color: #fff;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: bold;
+      transition: opacity 0.2s;
+    }
+    .download-btn:hover { opacity: 0.85; }
+    #results { display: none; }
+    .results-title {
+      font-size: 1.3rem;
+      font-weight: bold;
+      margin-bottom: 16px;
+      color: #ff6b35;
+    }
+    .copy-btn {
+      background: #333;
+      border: 1px solid #555;
+      color: #ccc;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      margin-right: 8px;
+      transition: background 0.2s;
+    }
+    .copy-btn:hover { background: #444; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎬 Reels Maker</h1>
+    <p class="subtitle">حوّل أي فيديو لريلز جاهزة بالذكاء الاصطناعي</p>
+
+    <div class="card">
+      <label>رابط السيرفر بتاعك</label>
+      <input type="url" id="serverUrl" placeholder="https://your-server.railway.app" />
+
+      <label style="margin-top:16px;">رابط الفيديو (يوتيوب أو غيره)</label>
+      <input type="url" id="videoUrl" placeholder="https://www.youtube.com/watch?v=..." />
+
+      <button class="btn" onclick="processVideo()" id="processBtn">
+        🚀 ابدأ التحليل والتقطيع
+      </button>
+
+      <div class="status" id="status"></div>
+    </div>
+
+    <div id="results">
+      <div class="results-title">✅ الريلز جاهزة!</div>
+      <div id="reelsList"></div>
+    </div>
+  </div>
+
+  <script>
+    async function processVideo() {
+      const serverUrl = document.getElementById('serverUrl').value.trim().replace(/\/$/, '');
+      const videoUrl = document.getElementById('videoUrl').value.trim();
+      const btn = document.getElementById('processBtn');
+      const status = document.getElementById('status');
+
+      if (!serverUrl || !videoUrl) {
+        showStatus('error', '⚠️ ادخل رابط السيرفر ورابط الفيديو');
+        return;
+      }
+
+      btn.disabled = true;
+      document.getElementById('results').style.display = 'none';
+      showStatus('loading', '⏳ بيتحمل الفيديو ويتحلل... ممكن ياخد 2-5 دقايق');
+
+      try {
+        const response = await fetch(`${serverUrl}/process`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: videoUrl })
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+          showStatus('error', `❌ خطأ: ${data.error}`);
+          btn.disabled = false;
+          return;
+        }
+
+        status.style.display = 'none';
+        displayResults(data.reels, serverUrl);
+
+      } catch (err) {
+        showStatus('error', `❌ مش قادر يوصل للسيرفر: ${err.message}`);
+      }
+
+      btn.disabled = false;
+    }
+
+    function displayResults(reels, serverUrl) {
+      const container = document.getElementById('reelsList');
+      container.innerHTML = '';
+
+      reels.forEach(reel => {
+        const div = document.createElement('div');
+        div.className = 'reel-card';
+        div.innerHTML = `
+          <div class="reel-header">
+            <span class="reel-number">ريلز ${reel.reel_number}</span>
+            <span class="reel-time">⏱ ${formatTime(reel.start)} - ${formatTime(reel.end)}</span>
+          </div>
+          <div class="reel-title">${reel.title}</div>
+          <div class="reel-description">${reel.description}</div>
+          <div class="reel-hashtags">${reel.hashtags}</div>
+          <div>
+            <button class="copy-btn" onclick="copyText(\`${reel.description}\n\n${reel.hashtags}\`)">📋 نسخ الوصف</button>
+            <a class="download-btn" href="${serverUrl}${reel.download_url}" download>⬇️ تحميل الريلز</a>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+
+      document.getElementById('results').style.display = 'block';
+    }
+
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60);
+      return `${m}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function copyText(text) {
+      navigator.clipboard.writeText(text).then(() => alert('✅ تم النسخ!'));
+    }
+
+    function showStatus(type, msg) {
+      const el = document.getElementById('status');
+      el.className = `status ${type}`;
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+  </script>
+</body>
+</html>
